@@ -1,19 +1,28 @@
 'use client';
 
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
 import { motion } from 'framer-motion';
 import { ArrowRight } from 'lucide-react';
 import Link from 'next/link';
 import { createUserWithEmailAndPassword, updateProfile } from 'firebase/auth';
 import { auth } from '@/lib/firebase';
+import { useAuth } from '@/lib/auth';
 
 export default function SignupPage() {
+    const { loginWithGoogle, user, loading } = useAuth(); // Use global auth
     const router = useRouter();
     const [name, setName] = useState('');
     const [email, setEmail] = useState('');
     const [password, setPassword] = useState('');
     const [error, setError] = useState('');
+
+    // Redirect if already logged in
+    useEffect(() => {
+        if (!loading && user) {
+            router.push('/profile');
+        }
+    }, [user, loading, router]);
 
     const handleSignup = async (e: React.FormEvent) => {
         e.preventDefault();
@@ -25,6 +34,8 @@ export default function SignupPage() {
             setError(err.message || 'Signup failed');
         }
     };
+
+    if (loading) return null; // Prevent flash
 
     return (
         <main className="min-h-screen flex items-center justify-center bg-black p-6">
@@ -77,6 +88,19 @@ export default function SignupPage() {
                             CREATE ACCOUNT <ArrowRight size={16} />
                         </button>
                     </form>
+
+                    <div className="my-6 flex items-center gap-4">
+                        <div className="h-px bg-white/10 flex-1" />
+                        <span className="text-white/30 text-xs font-mono">OR</span>
+                        <div className="h-px bg-white/10 flex-1" />
+                    </div>
+
+                    <button
+                        onClick={() => { loginWithGoogle().then(() => router.push('/profile')); }}
+                        className="w-full bg-transparent border border-white/20 text-white font-bold py-3 rounded-xl hover:bg-white/5 transition-colors"
+                    >
+                        Sign up with Google
+                    </button>
 
                     <p className="mt-6 text-center text-white/40 text-xs">
                         Already initialized? <Link href="/login" className="text-white hover:underline">Login</Link>

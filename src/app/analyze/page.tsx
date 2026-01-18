@@ -1,413 +1,384 @@
 'use client';
 
-import { useState, useEffect } from 'react';
+import { useState } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
-import { analyzeResume } from '@/actions/analyze';
 import {
-    Loader2, UploadCloud, RefreshCcw, ExternalLink,
-    Briefcase, GraduationCap, Mic2, TrendingUp,
-    CheckCircle2, AlertTriangle, ChevronDown, ChevronUp,
-    PlayCircle, GitBranch, Cpu, DollarSign, Globe
+    UploadCloud, Loader2, Cpu, TrendingUp, ShieldAlert,
+    Globe, CheckCircle2, AlertTriangle, ArrowRight,
+    MapPin, BookOpen, GraduationCap, PlayCircle, ExternalLink, Milestone
 } from 'lucide-react';
 import {
-    Radar, RadarChart, PolarGrid, PolarAngleAxis, PolarRadiusAxis, ResponsiveContainer,
-    BarChart, Bar, XAxis, YAxis, Tooltip, Cell
+    RadarChart, Radar, PolarGrid, PolarAngleAxis, PolarRadiusAxis, ResponsiveContainer,
+    Tooltip as RechartsTooltip
 } from 'recharts';
+import { analyzeResume, analyzeDeepResume } from '@/actions/analyze';
+import ProtectedRoute from '@/components/ProtectedRoute';
 
-// --- SUB-COMPONENTS ---
+// --- SUB COMPONENTS ---
 
-const Tabs = ({ active, setActive, items }: any) => (
-    <div className="flex gap-2 mb-8 overflow-x-auto pb-2 border-b border-white/10 no-scrollbar">
-        {items.map((item: any) => (
-            <button
-                key={item.id}
-                onClick={() => setActive(item.id)}
-                className={`
-                    px-5 py-2.5 rounded-t-xl font-mono text-xs uppercase tracking-wider transition-all flex items-center gap-2 whitespace-nowrap
-                    ${active === item.id
-                        ? 'bg-lime-400 text-black font-bold shadow-[0_-4px_15px_rgba(163,230,53,0.3)]'
-                        : 'bg-white/5 text-white/50 hover:text-white hover:bg-white/10'}
-                `}
-            >
-                {item.icon} {item.label}
-            </button>
-        ))}
-    </div>
-);
-
-const InterviewCard = ({ q }: any) => {
-    const [isOpen, setIsOpen] = useState(false);
-    return (
-        <div className="bg-white/5 border border-white/10 rounded-2xl overflow-hidden transition-all hover:border-lime-400/30">
-            <button
-                onClick={() => setIsOpen(!isOpen)}
-                className="w-full p-6 text-left flex justify-between items-start gap-4"
-            >
-                <div>
-                    <div className={`text-[10px] font-bold uppercase mb-2 px-2 py-1 inline-block rounded ${q.difficulty === 'Hard' ? 'bg-red-500/20 text-red-400' : 'bg-blue-500/20 text-blue-400'}`}>
-                        {q.type} • {q.difficulty}
-                    </div>
-                    <h4 className="text-lg font-bold text-white/90 leading-snug">"{q.question}"</h4>
-                </div>
-                {isOpen ? <ChevronUp className="w-5 h-5 text-lime-400" /> : <ChevronDown className="w-5 h-5 text-white/30" />}
-            </button>
-            <AnimatePresence>
-                {isOpen && (
-                    <motion.div
-                        initial={{ height: 0, opacity: 0 }}
-                        animate={{ height: 'auto', opacity: 1 }}
-                        exit={{ height: 0, opacity: 0 }}
-                        className="bg-black/20 border-t border-white/5"
-                    >
-                        <div className="p-6">
-                            <p className="text-xs text-lime-400 font-bold uppercase mb-2">Architect's Answer Key:</p>
-                            <p className="text-sm text-white/70 leading-relaxed whitespace-pre-line">{q.answerKey}</p>
-                        </div>
-                    </motion.div>
-                )}
-            </AnimatePresence>
-        </div>
-    );
-};
-
-// Interactive Roadmap with Local Storage Persistence
-const RoadmapStep = ({ step, index, storageKey }: any) => {
-    const [checked, setChecked] = useState(false);
-
-    // Load state from local storage on mount
-    useEffect(() => {
-        const saved = localStorage.getItem(`${storageKey}-step-${index}`);
-        if (saved) setChecked(JSON.parse(saved));
-    }, [index, storageKey]);
-
-    // Save state to local storage on change
-    const toggleCheck = () => {
-        const newState = !checked;
-        setChecked(newState);
-        localStorage.setItem(`${storageKey}-step-${index}`, JSON.stringify(newState));
-    };
+// Inside src/app/analyze/page.tsx
+const ScoreCard = ({ title, score, color = "text-white" }: { title: string, score: number, color?: string }) => {
+    // If the score is less than or equal to 10, assume it's a 1-10 scale and multiply by 10
+    const normalizedScore = score <= 10 ? score * 10 : score;
 
     return (
-        <div className={`relative pl-8 pb-12 border-l ${checked ? 'border-lime-400' : 'border-white/10'} last:pb-0 transition-colors duration-500`}>
-            <button
-                onClick={toggleCheck}
-                className={`
-                    absolute -left-[13px] top-0 w-6 h-6 rounded-full border-2 flex items-center justify-center transition-all z-10
-                    ${checked ? 'bg-lime-400 border-lime-400 scale-110 shadow-[0_0_10px_rgba(163,230,53,0.5)]' : 'bg-[#050505] border-white/20 hover:border-lime-400'}
-                `}
-            >
-                {checked && <CheckCircle2 className="w-4 h-4 text-black" />}
-            </button>
-
-            <div className={`p-6 rounded-2xl border transition-all ${checked ? 'bg-lime-400/5 border-lime-400/30' : 'bg-white/5 border-white/10'}`}>
-                <div className="flex justify-between items-start mb-4">
-                    <h3 className={`text-xl font-bold ${checked ? 'text-lime-400' : 'text-white'}`}>{step.phase}</h3>
-                    <span className="font-mono text-xs px-2 py-1 rounded bg-black/20 text-white/50">{step.week}</span>
-                </div>
-
-                <ul className="space-y-2 mb-4">
-                    {step.goals.map((goal: string, i: number) => (
-                        <li key={i} className={`text-sm flex items-start gap-2 ${checked ? 'text-white/80 line-through decoration-lime-400/50' : 'text-white/60'}`}>
-                            <span className={`mt-1.5 w-1 h-1 rounded-full shrink-0 ${checked ? 'bg-lime-400' : 'bg-white/30'}`} />
-                            {goal}
-                        </li>
-                    ))}
-                </ul>
-
-                <div className="flex flex-wrap gap-2 mt-4 pt-4 border-t border-white/5">
-                    {step.resources.map((res: string, i: number) => (
-                        <a
-                            key={i}
-                            href={`https://www.google.com/search?q=${res} tutorial`}
-                            target="_blank"
-                            rel="noopener noreferrer"
-                            className="text-[10px] flex items-center gap-1 px-3 py-1.5 rounded-lg bg-white/5 hover:bg-white/10 text-white/50 hover:text-lime-400 transition-colors"
-                        >
-                            <ExternalLink className="w-3 h-3" /> {res}
-                        </a>
-                    ))}
-                </div>
+        <div className="bg-white/5 border border-white/10 p-6 rounded-3xl relative overflow-hidden group hover:border-white/20 transition-all">
+            {/* ... existing styles ... */}
+            <div className="flex items-baseline gap-1">
+                <span className={`text-6xl font-black italic tracking-tighter ${color}`}>
+                    {normalizedScore || 0}
+                </span>
+                <span className="text-white/20 text-xl font-bold">/100</span>
             </div>
         </div>
     );
 };
 
+const SkillRadar = ({ data }: { data: any[] }) => {
+    // Normalize data: If any score is <= 10, assume a 1-10 scale and multiply by 10
+    const normalizedData = data?.map(item => ({
+        ...item,
+        // If the score is very low, it's likely the AI used a 1-10 scale
+        score: item.score <= 10 ? item.score * 10 : item.score
+    }));
+
+    return (
+        <div className="h-[300px] w-full relative">
+            <ResponsiveContainer width="100%" height="100%">
+                <RadarChart cx="50%" cy="50%" outerRadius="70%" data={normalizedData}>
+                    <PolarGrid stroke="rgba(255,255,255,0.1)" />
+                    <PolarAngleAxis
+                        dataKey="skill"
+                        tick={{ fill: 'rgba(255,255,255,0.5)', fontSize: 10 }}
+                    />
+                    <PolarRadiusAxis
+                        angle={30}
+                        domain={[0, 100]}
+                        tick={false}
+                        axisLine={false}
+                    />
+                    <Radar
+                        name="Skills"
+                        dataKey="score"
+                        stroke="#D2FF00"
+                        strokeWidth={2}
+                        fill="#D2FF00"
+                        fillOpacity={0.2}
+                    />
+                    <RechartsTooltip
+                        contentStyle={{
+                            backgroundColor: '#000',
+                            border: '1px solid #333',
+                            borderRadius: '8px'
+                        }}
+                        itemStyle={{ color: '#D2FF00' }}
+                    />
+                </RadarChart>
+            </ResponsiveContainer>
+        </div>
+    );
+};
+
+const TabButton = ({ active, id, label, icon: Icon, onClick }: any) => (
+    <button onClick={onClick} className={`relative px-6 py-3 rounded-full flex items-center gap-2 transition-all duration-300 ${active === id ? 'text-black font-bold' : 'text-white/50 hover:text-white hover:bg-white/5'}`}>
+        {active === id && <motion.div layoutId="activeTab" className="absolute inset-0 bg-lando rounded-full" transition={{ type: "spring", bounce: 0.2, duration: 0.6 }} />}
+        <span className="relative z-10 flex items-center gap-2"><Icon size={16} /> {label}</span>
+    </button>
+);
+
+const CourseCard = ({ course }: { course: any }) => (
+    <div className="bg-white/5 border border-white/10 p-6 rounded-2xl flex flex-col justify-between hover:bg-white/10 hover:scale-[1.02] transition-all duration-300 group">
+        <div>
+            <div className="flex justify-between items-start mb-4">
+                <span className="px-2 py-1 bg-black/40 text-[10px] font-mono uppercase text-white/60 rounded border border-white/10">
+                    {course.platform}
+                </span>
+                <span className={`px-2 py-1 text-[10px] font-bold uppercase rounded ${course.difficulty === 'Beginner' ? 'bg-emerald-500/10 text-emerald-400' :
+                    course.difficulty === 'Advanced' ? 'bg-red-500/10 text-red-400' : 'bg-yellow-500/10 text-yellow-400'
+                    }`}>
+                    {course.difficulty}
+                </span>
+            </div>
+            <h3 className="text-lg font-bold text-white mb-2 leading-tight group-hover:text-lando transition-colors">{course.title}</h3>
+            <p className="text-sm text-white/50 mb-4 line-clamp-2">{course.reason}</p>
+        </div>
+
+        <a
+            href={`https://www.google.com/search?q=${course.title} ${course.platform} course`}
+            target="_blank"
+            rel="noopener noreferrer"
+            className="flex items-center justify-center gap-2 w-full py-3 bg-black/50 border border-white/10 rounded-xl text-xs font-mono font-bold text-white hover:bg-lando hover:text-black hover:border-lando transition-all"
+        >
+            <PlayCircle size={14} /> INITIALIZE MODULE
+        </a>
+    </div>
+);
+
+const RoadmapPhase = ({ phase, index }: { phase: any, index: number }) => (
+    <div className="relative pl-12 pb-12 last:pb-0">
+        {/* Timeline Line */}
+        <div className="absolute left-[19px] top-8 bottom-0 w-[2px] bg-white/10" />
+
+        {/* Node */}
+        <div className="absolute left-0 top-0 w-10 h-10 rounded-full bg-[#050505] border-2 border-white/20 flex items-center justify-center z-10">
+            <span className="font-mono text-xs font-bold text-lando">{index + 1}</span>
+        </div>
+
+        {/* Content */}
+        <div className="bg-white/5 border border-white/10 rounded-2xl p-6 relative group hover:border-lando/30 transition-colors">
+            <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 mb-4 pb-4 border-b border-white/10">
+                <h3 className="text-xl font-bold text-white">{phase.phase}</h3>
+                <span className="px-3 py-1 bg-lando/10 text-lando text-xs font-mono font-bold rounded-full uppercase border border-lando/20">
+                    {phase.week}
+                </span>
+            </div>
+
+            <div className="grid md:grid-cols-2 gap-6">
+                <div>
+                    <h4 className="text-white/40 text-[10px] uppercase font-mono tracking-widest mb-3">Objectives</h4>
+                    <ul className="space-y-2">
+                        {phase.goals?.map((goal: string, i: number) => (
+                            <li key={i} className="flex gap-3 text-sm text-white/80">
+                                <CheckCircle2 size={16} className="text-emerald-500 shrink-0 mt-0.5" />
+                                {goal}
+                            </li>
+                        ))}
+                    </ul>
+                </div>
+                <div>
+                    <h4 className="text-white/40 text-[10px] uppercase font-mono tracking-widest mb-3">Resources</h4>
+                    <div className="flex flex-wrap gap-2">
+                        {phase.resources?.map((res: string, i: number) => (
+                            <a
+                                key={i}
+                                href={`https://www.google.com/search?q=${res}`}
+                                target="_blank"
+                                rel="noopener noreferrer"
+                                className="flex items-center gap-1.5 px-3 py-1.5 bg-black/40 border border-white/10 rounded-lg text-xs text-white/60 hover:text-white hover:border-white/30 transition-colors"
+                            >
+                                <ExternalLink size={10} /> {res}
+                            </a>
+                        ))}
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+);
+
 // --- MAIN PAGE ---
 
 export default function AnalysisPage() {
-    const [loading, setLoading] = useState(false);
-    const [result, setResult] = useState<any>(null);
+    const [status, setStatus] = useState<'IDLE' | 'ANALYZING' | 'COMPLETE'>('IDLE');
+    const [data, setData] = useState<any>(null);
     const [activeTab, setActiveTab] = useState('overview');
-    const [uploadedFile, setUploadedFile] = useState<File | null>(null);
-    const [targetRole, setTargetRole] = useState("Software Engineer");
 
-    const roles = ["Software Engineer", "Frontend Developer", "Backend Engineer", "Full Stack Developer", "DevOps Engineer", "Data Scientist", "Product Manager"];
+    // Sub-states
+    const [deepData, setDeepData] = useState<any>(null);
+    const [deepLoading, setDeepLoading] = useState(false);
 
-    const handleAnalyze = async (file: File, role: string) => {
-        setLoading(true);
-        setUploadedFile(file); // Persist file for re-analysis
-        setResult(null); // Clear previous result
+    const handleAnalyze = async (f: File) => {
+        setStatus('ANALYZING');
+        const fd = new FormData();
+        fd.append('resume', f);
 
-        const formData = new FormData();
-        formData.append('resume', file);
+        const res = await analyzeResume(fd, 'Software Engineer');
 
-        const data = await analyzeResume(formData, role);
-        if (data?.success) setResult(data.data);
-        else alert(data?.error || "Analysis failed");
-
-        setLoading(false);
-    };
-
-    // Re-run analysis when role changes if file exists
-    const handleRoleChange = (e: React.ChangeEvent<HTMLSelectElement>) => {
-        const newRole = e.target.value;
-        setTargetRole(newRole);
-        if (uploadedFile) {
-            handleAnalyze(uploadedFile, newRole);
+        if (res?.success) {
+            setData(res.data);
+            setStatus('COMPLETE');
+        } else {
+            alert("Analysis failed. Please try again.");
+            setStatus('IDLE');
         }
     };
 
-    const tabs = [
-        { id: 'overview', label: 'Market Intel', icon: <Briefcase className="w-4 h-4" /> },
-        { id: 'dsa', label: 'DSA & Code', icon: <Cpu className="w-4 h-4" /> },
-        { id: 'portfolio', label: 'Portfolio', icon: <GitBranch className="w-4 h-4" /> },
-        { id: 'gaps', label: 'Skill Gaps', icon: <AlertTriangle className="w-4 h-4" /> },
-        { id: 'interview', label: 'Interview', icon: <Mic2 className="w-4 h-4" /> },
-        { id: 'roadmap', label: 'Roadmap', icon: <TrendingUp className="w-4 h-4" /> },
-    ];
+    const handleDeepAnalysis = async () => {
+        if (!data) return;
+        setDeepLoading(true);
+        const res = await analyzeDeepResume(data, "Remote / Global");
+        if (res?.success) setDeepData(res.data);
+        else alert("Market analysis failed. Try again.");
+        setDeepLoading(false);
+    };
 
     return (
-        <main className="min-h-screen bg-[#050505] text-white p-4 md:p-12 font-sans selection:bg-lime-400 selection:text-black">
+        <ProtectedRoute>
+            <main className="min-h-screen bg-[#050505] text-white p-4 md:p-12 font-sans selection:bg-lando selection:text-black">
 
-            {/* HERO / HEADER */}
-            {!result && (
-                <div className="text-center pt-20 mb-12">
-                    <h1 className="text-5xl md:text-7xl font-black tracking-tighter mb-6">
-                        SKILL <span className="text-lime-400">ENGINE</span> ULTRA
-                    </h1>
-                    <p className="text-white/40 font-mono text-sm">ARCHITECT LEVEL RESUME DECODING</p>
-                </div>
-            )}
+                <AnimatePresence mode="wait">
+                    {status === 'IDLE' && (
+                        <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0, scale: 0.9 }} className="min-h-[80vh] flex flex-col items-center justify-center relative">
+                            <div className="absolute inset-0 bg-[radial-gradient(circle_at_center,_var(--tw-gradient-stops))] from-white/5 via-black to-black z-0 pointer-events-none" />
+                            <h1 className="text-5xl md:text-7xl font-black italic tracking-tighter mb-8 relative z-10 text-center">SKILL <span className="text-lando">ENGINE</span></h1>
+                            <label className="group relative w-full max-w-xl h-64 bg-white/5 border border-white/10 rounded-3xl flex flex-col items-center justify-center cursor-pointer overflow-hidden hover:border-lando/50 transition-all">
+                                <div className="absolute inset-0 bg-gradient-to-tr from-lando/5 to-transparent opacity-0 group-hover:opacity-100 transition-opacity" />
+                                <UploadCloud className="w-16 h-16 text-white/20 group-hover:text-lando transition-colors mb-6 relative z-10" />
+                                <p className="font-mono text-sm text-white/50 uppercase tracking-widest relative z-10">Drop Resume Protocol</p>
+                                <input type="file" className="hidden" onChange={(e) => e.target.files?.[0] && handleAnalyze(e.target.files[0])} />
+                            </label>
+                        </motion.div>
+                    )}
+                </AnimatePresence>
 
-            {/* ROLE SWITCHER (Visible when result exists) */}
-            {result && !loading && (
-                <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} className="fixed top-6 right-6 z-50 flex items-center gap-3 bg-black/50 backdrop-blur-md p-2 rounded-xl border border-white/10">
-                    <span className="text-[10px] font-mono text-white/50 pl-2">TARGET ROLE:</span>
-                    <select
-                        value={targetRole}
-                        onChange={handleRoleChange}
-                        className="bg-white/5 border border-white/10 rounded-lg px-3 py-1 text-sm font-bold text-lime-400 focus:outline-none focus:border-lime-400"
-                    >
-                        {roles.map(r => <option key={r} value={r} className="bg-black text-white">{r}</option>)}
-                    </select>
-                </motion.div>
-            )}
+                {status === 'ANALYZING' && (
+                    <div className="min-h-[80vh] flex flex-col items-center justify-center">
+                        <Loader2 className="w-16 h-16 text-lando animate-spin mb-8" />
+                        <p className="font-mono text-xs text-lando animate-pulse uppercase tracking-widest">Running Neural Diagnostics...</p>
+                    </div>
+                )}
 
-            {/* UPLOAD */}
-            <AnimatePresence mode="wait">
-                {!result && !loading && (
-                    <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} className="max-w-xl mx-auto">
-                        <label className="flex flex-col items-center justify-center w-full h-64 rounded-3xl border border-dashed border-white/20 bg-white/5 hover:border-lime-400/50 hover:bg-white/10 transition-all cursor-pointer group">
-                            <input type="file" className="hidden" onChange={(e) => e.target.files?.[0] && handleAnalyze(e.target.files[0], targetRole)} />
-                            <UploadCloud className="w-12 h-12 text-white/20 group-hover:text-lime-400 transition-colors mb-4" />
-                            <span className="font-mono text-xs text-white/50 group-hover:text-white transition-colors">INITIATE SEQUENCE [UPLOAD RESUME]</span>
-                        </label>
+                {status === 'COMPLETE' && data && (
+                    <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} className="max-w-7xl mx-auto pt-8 pb-24">
+                        <header className="flex flex-col md:flex-row md:items-end justify-between gap-6 mb-12 border-b border-white/10 pb-8">
+                            <div>
+                                <p className="text-lando font-mono text-xs uppercase tracking-widest mb-2">Analysis Complete</p>
+                                <h2 className="text-4xl md:text-5xl font-black italic tracking-tight text-white">{data.fitAnalysis?.seniorityLevel || "Candidate"} Profile</h2>
+                            </div>
+                            <div className="flex gap-2 bg-white/5 p-1 rounded-full border border-white/10 overflow-x-auto">
+                                <TabButton id="overview" label="Intel" icon={Cpu} active={activeTab} onClick={() => setActiveTab('overview')} />
+                                <TabButton id="market" label="Market" icon={Globe} active={activeTab} onClick={() => setActiveTab('market')} />
+                                <TabButton id="roadmap" label="Roadmap" icon={Milestone} active={activeTab} onClick={() => setActiveTab('roadmap')} />
+                                <TabButton id="courses" label="Courses" icon={GraduationCap} active={activeTab} onClick={() => setActiveTab('courses')} />
+                            </div>
+                        </header>
+
+                        <div className="min-h-[500px]">
+                            {/* OVERVIEW TAB */}
+                            {activeTab === 'overview' && (
+                                <motion.div initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} className="grid grid-cols-1 md:grid-cols-3 gap-6">
+                                    <div className="space-y-6">
+                                        <ScoreCard title="Resume Score" score={data.resumeScore} color="text-lando" />
+                                        <ScoreCard title="ATS Compatibility" score={data.atsScore} />
+                                        <div className="bg-white/5 border border-white/10 p-6 rounded-3xl">
+                                            <h3 className="text-white/40 font-mono text-xs uppercase tracking-widest mb-4">Core Tech Stack</h3>
+                                            <div className="flex flex-wrap gap-2">
+                                                {data.techStack?.map((t: any, i: number) => (
+                                                    <span key={i} className="px-3 py-1 bg-black/50 border border-white/10 rounded-lg text-xs font-mono text-white/70">{t.technology}</span>
+                                                ))}
+                                            </div>
+                                        </div>
+                                    </div>
+                                    <div className="md:col-span-2 space-y-6">
+                                        <div className="grid md:grid-cols-2 gap-6">
+                                            <div className="bg-white/5 border border-white/10 p-8 rounded-3xl">
+                                                <h3 className="text-white font-bold mb-4 flex items-center gap-2"><TrendingUp size={18} className="text-lando" /> Capability Matrix</h3>
+                                                <SkillRadar data={data.skillGraph} />
+                                            </div>
+                                            <div className="bg-white/5 border border-white/10 p-8 rounded-3xl flex flex-col justify-center">
+                                                <h3 className="text-white font-bold mb-4">Executive Summary</h3>
+                                                <p className="text-white/60 leading-relaxed text-sm">{data.executiveSummary}</p>
+                                                <div className="mt-6 pt-6 border-t border-white/10">
+                                                    <h4 className="text-xs font-bold text-white mb-2">Verdict</h4>
+                                                    <p className="text-lando text-sm font-mono">{data.fitAnalysis?.verdict}</p>
+                                                </div>
+                                            </div>
+                                        </div>
+                                        <div className="bg-white/5 border border-white/10 p-8 rounded-3xl">
+                                            <h3 className="text-white font-bold mb-6 flex items-center gap-2"><ShieldAlert size={18} className="text-red-400" /> Critical Skill Gaps</h3>
+                                            <div className="grid gap-4">
+                                                {data.skillGaps?.map((gap: any, i: number) => (
+                                                    <div key={i} className="flex items-start gap-4 p-4 bg-black/20 rounded-xl border border-white/5">
+                                                        <AlertTriangle className="w-5 h-5 text-red-400 shrink-0 mt-1" />
+                                                        <div>
+                                                            <div className="flex items-center gap-2 mb-1">
+                                                                <h4 className="font-bold text-white text-sm">{gap.skill}</h4>
+                                                                <span className="px-2 py-0.5 bg-red-500/10 text-red-400 text-[10px] font-mono rounded uppercase">{gap.severity}</span>
+                                                            </div>
+                                                            <p className="text-white/50 text-xs mb-2">{gap.impact}</p>
+                                                            <p className="text-lando/80 text-xs font-mono">Fix: {gap.fix}</p>
+                                                        </div>
+                                                    </div>
+                                                ))}
+                                            </div>
+                                        </div>
+                                    </div>
+                                </motion.div>
+                            )}
+
+                            {/* MARKET TAB */}
+                            {activeTab === 'market' && (
+                                <motion.div initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} className="bg-white/5 border border-white/10 rounded-3xl p-10 min-h-[400px]">
+                                    {!deepData ? (
+                                        <div className="flex flex-col items-center justify-center h-full py-20 text-center">
+                                            <Globe className="w-16 h-16 text-white/10 mb-6" />
+                                            <h3 className="text-2xl font-bold text-white mb-2">Deep Market Intel</h3>
+                                            <p className="text-white/50 max-w-md mb-8">Generate real-time salary estimates, demand forecasting, and global hireability scores.</p>
+                                            <button onClick={handleDeepAnalysis} disabled={deepLoading} className="px-8 py-4 bg-lando text-black font-bold rounded-xl hover:scale-105 transition-transform disabled:opacity-50 flex items-center gap-2">
+                                                {deepLoading ? <Loader2 className="animate-spin" /> : <TrendingUp size={18} />}
+                                                {deepLoading ? "Scanning Market..." : "Run Market Analysis"}
+                                            </button>
+                                        </div>
+                                    ) : (
+                                        <div className="grid md:grid-cols-2 gap-8">
+                                            <div>
+                                                <h3 className="text-lando font-mono text-sm uppercase mb-6">Market Position</h3>
+                                                <div className="space-y-6">
+                                                    <div className="p-6 bg-black/30 rounded-2xl border border-white/5">
+                                                        <p className="text-white/40 text-xs uppercase mb-1">Demand Level</p>
+                                                        <p className="text-3xl font-bold text-white">{deepData.demandLevel}</p>
+                                                    </div>
+                                                    <div className="p-6 bg-black/30 rounded-2xl border border-white/5">
+                                                        <p className="text-white/40 text-xs uppercase mb-1">Hireability Score</p>
+                                                        <p className="text-3xl font-bold text-emerald-400">{deepData.hireabilityVerdict}</p>
+                                                    </div>
+                                                </div>
+                                            </div>
+                                            <div>
+                                                <h3 className="text-lando font-mono text-sm uppercase mb-6">Compensation Estimate</h3>
+                                                {deepData.salaryEstimate && (
+                                                    <div className="space-y-2">
+                                                        {Object.entries(deepData.salaryEstimate).map(([level, salary]: any) => (
+                                                            <div key={level} className="flex justify-between items-center p-4 bg-white/5 rounded-xl">
+                                                                <span className="capitalize text-white/60">{level}</span>
+                                                                <span className="font-mono font-bold text-white">{salary}</span>
+                                                            </div>
+                                                        ))}
+                                                    </div>
+                                                )}
+                                            </div>
+                                        </div>
+                                    )}
+                                </motion.div>
+                            )}
+
+                            {/* ROADMAP TAB */}
+                            {activeTab === 'roadmap' && (
+                                <motion.div initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} className="bg-black/20 rounded-3xl p-6 min-h-[400px]">
+                                    <div className="max-w-4xl mx-auto">
+                                        <h2 className="text-3xl font-black italic text-white mb-8 flex items-center gap-3">
+                                            <Milestone className="text-lando" />
+                                            MISSION <span className="text-white/50">TIMELINE</span>
+                                        </h2>
+                                        <div className="relative">
+                                            {data.roadmap?.map((phase: any, index: number) => (
+                                                <RoadmapPhase key={index} phase={phase} index={index} />
+                                            ))}
+                                        </div>
+                                    </div>
+                                </motion.div>
+                            )}
+
+                            {/* COURSES TAB */}
+                            {activeTab === 'courses' && (
+                                <motion.div initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} className="bg-black/20 rounded-3xl p-6 min-h-[400px]">
+                                    <div className="max-w-5xl mx-auto">
+                                        <h2 className="text-3xl font-black italic text-white mb-8 flex items-center gap-3">
+                                            <GraduationCap className="text-lando" />
+                                            KNOWLEDGE <span className="text-white/50">INJECTION</span>
+                                        </h2>
+                                        <div className="grid md:grid-cols-2 lg:grid-cols-3 gap-6">
+                                            {data.courseRecommendations?.map((course: any, index: number) => (
+                                                <CourseCard key={index} course={course} />
+                                            ))}
+                                        </div>
+                                    </div>
+                                </motion.div>
+                            )}
+                        </div>
                     </motion.div>
                 )}
-            </AnimatePresence>
-
-            {/* LOADER */}
-            {loading && (
-                <div className="flex flex-col items-center justify-center h-[50vh]">
-                    <Loader2 className="w-16 h-16 text-lime-400 animate-spin mb-8" />
-                    <p className="font-mono text-xs text-lime-400 animate-pulse">
-                        ANALYZING FOR ROLE: <span className="text-white">{targetRole.toUpperCase()}</span>...
-                    </p>
-                </div>
-            )}
-
-            {/* DASHBOARD */}
-            {result && !loading && (
-                <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} className="max-w-7xl mx-auto pt-8 pb-20">
-
-                    {/* TOP STATS */}
-                    <div className="grid grid-cols-2 md:grid-cols-4 gap-4 mb-8">
-                        <div className="p-6 bg-white/5 rounded-2xl border border-white/10">
-                            <p className="text-xs text-white/40 uppercase mb-2">Match Score</p>
-                            <p className="text-5xl font-black text-lime-400">{result.fitAnalysis.matchScore}%</p>
-                        </div>
-                        <div className="p-6 bg-white/5 rounded-2xl border border-white/10">
-                            <p className="text-xs text-white/40 uppercase mb-2">Level Detected</p>
-                            <p className="text-2xl font-bold">{result.fitAnalysis.seniorityLevel}</p>
-                        </div>
-                        <div className="p-6 bg-white/5 rounded-2xl border border-white/10 relative overflow-hidden">
-                            <div className="absolute top-0 right-0 p-10 bg-emerald-500/10 rounded-full blur-xl" />
-                            <p className="text-xs text-white/40 uppercase mb-2">Est. Salary</p>
-                            <p className="text-xl font-bold text-emerald-400">{result.marketAnalysis.salaryEstimation.range}</p>
-                        </div>
-                        <button
-                            onClick={() => { setResult(null); setUploadedFile(null); }}
-                            className="p-6 bg-red-500/10 hover:bg-red-500/20 rounded-2xl border border-red-500/20 transition-colors flex flex-col items-center justify-center gap-2 group"
-                        >
-                            <RefreshCcw className="w-6 h-6 text-red-400 group-hover:rotate-180 transition-transform" />
-                            <span className="text-xs text-red-400 font-bold uppercase">New Scan</span>
-                        </button>
-                    </div>
-
-                    <Tabs active={activeTab} setActive={setActiveTab} items={tabs} />
-
-                    <div className="min-h-[500px]">
-
-                        {/* 1. OVERVIEW & MARKET INTEL */}
-                        {activeTab === 'overview' && (
-                            <div className="grid md:grid-cols-2 gap-8">
-                                <div className="space-y-6">
-                                    <div className="bg-white/5 p-8 rounded-3xl border border-white/10">
-                                        <h3 className="text-lg font-bold mb-4 text-lime-400">Architect's Summary</h3>
-                                        <p className="text-white/70 leading-relaxed text-lg font-light">{result.executiveSummary}</p>
-                                    </div>
-                                    <div className="bg-white/5 p-8 rounded-3xl border border-white/10">
-                                        <h3 className="text-lg font-bold mb-4 flex items-center gap-2 text-emerald-400">
-                                            <Globe className="w-5 h-5" /> Market Intelligence
-                                        </h3>
-                                        <div className="space-y-4">
-                                            <div>
-                                                <p className="text-xs text-white/40 uppercase">Demand Level</p>
-                                                <p className="text-white font-bold">{result.marketAnalysis.demandLevel}</p>
-                                            </div>
-                                            <div>
-                                                <p className="text-xs text-white/40 uppercase">Top Tier Benchmark</p>
-                                                <p className="text-white/80">{result.marketAnalysis.salaryEstimation.topTierBenchmark}</p>
-                                            </div>
-                                            <div>
-                                                <p className="text-xs text-white/40 uppercase">Outlook</p>
-                                                <p className="text-white/60 italic">"{result.marketAnalysis.marketOutlook}"</p>
-                                            </div>
-                                        </div>
-                                    </div>
-                                </div>
-                                <div className="bg-white/5 p-4 rounded-3xl border border-white/10 h-[400px] relative">
-                                    <p className="absolute top-6 left-6 text-xs font-bold text-white/30 uppercase tracking-widest">Skill Radar</p>
-                                    <ResponsiveContainer width="100%" height="100%">
-                                        <RadarChart cx="50%" cy="50%" outerRadius="65%" data={result.radarData}>
-                                            <PolarGrid stroke="rgba(255,255,255,0.1)" />
-                                            <PolarAngleAxis dataKey="subject" tick={{ fill: 'white', fontSize: 11 }} />
-                                            <PolarRadiusAxis angle={30} domain={[0, 100]} tick={false} axisLine={false} />
-                                            <Radar name="Candidate" dataKey="A" stroke="#a3e635" strokeWidth={3} fill="#a3e635" fillOpacity={0.4} />
-                                            <Tooltip contentStyle={{ backgroundColor: '#000', border: '1px solid #333' }} />
-                                        </RadarChart>
-                                    </ResponsiveContainer>
-                                </div>
-                            </div>
-                        )}
-
-                        {/* 2. DSA & CODE QUALITY */}
-                        {activeTab === 'dsa' && (
-                            <div className="grid md:grid-cols-2 gap-8">
-                                <div className="bg-white/5 p-8 rounded-3xl border border-white/10">
-                                    <h3 className="text-lg font-bold mb-6 flex items-center gap-2 text-cyan-400">
-                                        <Cpu className="w-5 h-5" /> Algorithmic Proficiency
-                                    </h3>
-                                    <div className="h-[300px]">
-                                        <ResponsiveContainer width="100%" height="100%">
-                                            <BarChart data={result.dsaAnalysis.topics} layout="vertical">
-                                                <XAxis type="number" domain={[0, 100]} hide />
-                                                <YAxis dataKey="topic" type="category" width={100} tick={{ fill: 'white', fontSize: 12 }} />
-                                                <Tooltip cursor={{ fill: 'rgba(255,255,255,0.05)' }} contentStyle={{ backgroundColor: '#000', border: '1px solid #333' }} />
-                                                <Bar dataKey="score" fill="#22d3ee" radius={[0, 4, 4, 0]} barSize={20} />
-                                            </BarChart>
-                                        </ResponsiveContainer>
-                                    </div>
-                                </div>
-                                <div className="space-y-6">
-                                    <div className="bg-white/5 p-8 rounded-3xl border border-white/10">
-                                        <h3 className="text-lg font-bold mb-2">Code Quality Audit</h3>
-                                        <p className="text-white/60 leading-relaxed mb-4">{result.dsaAnalysis.feedback}</p>
-                                        <div className="flex items-center gap-4">
-                                            <div className="text-4xl font-black text-cyan-400">{result.dsaAnalysis.overallScore}/100</div>
-                                            <div className="text-xs text-white/40 uppercase">Overall Algo Score</div>
-                                        </div>
-                                    </div>
-                                </div>
-                            </div>
-                        )}
-
-                        {/* 3. PORTFOLIO SENTIMENT */}
-                        {activeTab === 'portfolio' && (
-                            <div className="bg-white/5 p-8 rounded-3xl border border-white/10">
-                                <div className="flex items-center justify-between mb-8">
-                                    <h3 className="text-lg font-bold flex items-center gap-2 text-purple-400">
-                                        <GitBranch className="w-5 h-5" /> Project Intelligence
-                                    </h3>
-                                    <span className={`px-3 py-1 rounded-full text-xs font-bold uppercase ${result.portfolioAnalysis.sentiment === 'Positive' ? 'bg-lime-400/20 text-lime-400' : 'bg-white/10 text-white'}`}>
-                                        Sentiment: {result.portfolioAnalysis.sentiment}
-                                    </span>
-                                </div>
-                                <p className="text-white/70 mb-6 italic border-l-2 border-purple-400 pl-4">"{result.portfolioAnalysis.projectQuality}"</p>
-                                <div className="grid md:grid-cols-2 gap-4">
-                                    {result.portfolioAnalysis.highlights.map((h: string, i: number) => (
-                                        <div key={i} className="p-4 bg-black/30 rounded-xl border border-white/5 flex items-start gap-3">
-                                            <CheckCircle2 className="w-4 h-4 text-purple-400 mt-1 shrink-0" />
-                                            <p className="text-sm text-white/80">{h}</p>
-                                        </div>
-                                    ))}
-                                </div>
-                            </div>
-                        )}
-
-                        {/* 4. SKILL GAPS */}
-                        {activeTab === 'gaps' && (
-                            <div className="space-y-4">
-                                {result.criticalGaps.map((gap: any, i: number) => (
-                                    <div key={i} className="flex flex-col md:flex-row items-start md:items-center gap-6 p-6 bg-white/5 border border-red-500/20 rounded-2xl hover:bg-white/10 transition-colors">
-                                        <div className="p-4 bg-red-500/10 rounded-xl">
-                                            <AlertTriangle className="w-6 h-6 text-red-400" />
-                                        </div>
-                                        <div className="flex-grow">
-                                            <div className="flex items-center gap-3 mb-1">
-                                                <h4 className="text-xl font-bold text-white">{gap.skill}</h4>
-                                                <span className="text-[10px] uppercase font-bold text-red-400 bg-red-500/10 px-2 py-1 rounded">{gap.severity} Priority</span>
-                                            </div>
-                                            <p className="text-white/60 text-sm">{gap.description}</p>
-                                        </div>
-                                        <a
-                                            href={`https://www.google.com/search?q=${gap.searchQuery} tutorial`}
-                                            target="_blank"
-                                            rel="noopener noreferrer"
-                                            className="px-6 py-3 rounded-xl border border-white/20 text-white font-mono text-xs hover:bg-white hover:text-black transition-colors whitespace-nowrap"
-                                        >
-
-                                        </a>
-                                    </div>
-                                ))}
-                            </div>
-                        )}
-
-                        {/* 5. INTERVIEW */}
-                        {activeTab === 'interview' && (
-                            <div className="grid gap-4 max-w-4xl mx-auto">
-                                {result.interviewPrep.map((q: any, i: number) => (
-                                    <InterviewCard key={i} q={q} />
-                                ))}
-                            </div>
-                        )}
-
-                        {/* 6. INTERACTIVE ROADMAP */}
-                        {activeTab === 'roadmap' && (
-                            <div className="max-w-3xl mx-auto pl-4">
-                                {result.roadmap.map((step: any, i: number) => (
-                                    <RoadmapStep
-                                        key={i}
-                                        step={step}
-                                        index={i}
-                                        storageKey={`roadmap-${uploadedFile?.name || 'default'}`}
-                                    />
-                                ))}
-                            </div>
-                        )}
-                    </div>
-                </motion.div>
-            )}
-        </main>
+            </main>
+        </ProtectedRoute>
     );
 }

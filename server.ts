@@ -5,7 +5,6 @@ import { Server } from "socket.io";
 const dev = process.env.NODE_ENV !== "production";
 const hostname = "localhost";
 const port = 3000;
-// when using middleware `hostname` and `port` must be provided below
 const app = next({ dev, hostname, port });
 const handler = app.getRequestHandler();
 
@@ -15,20 +14,30 @@ app.prepare().then(() => {
     const io = new Server(httpServer, {
         path: "/api/socket/io",
         addTrailingSlash: false,
+        cors: {
+            origin: "*",
+            methods: ["GET", "POST"]
+        }
     });
 
     io.on("connection", (socket) => {
-        console.log("Client connected", socket.id);
+        // console.log("Client connected", socket.id);
 
-        // Join a room based on user ID or a general lobby
         socket.on("join_room", (room) => {
             socket.join(room);
-            console.log(`User ${socket.id} joined room ${room}`);
+            // console.log(`[Socket] ${socket.id} joined ${room}`);
+
+            // Optional: Notify room of new user
+            // socket.to(room).emit("system_message", { text: "A user joined the mainframe." });
+        });
+
+        socket.on("leave_room", (room) => {
+            socket.leave(room);
+            // console.log(`[Socket] ${socket.id} left ${room}`);
         });
 
         socket.on("send_message", (data) => {
-            // Broadcast to the specific room
-            socket.to(data.room).emit("receive_message", data);
+            io.to(data.room).emit("receive_message", data);
         });
 
         socket.on("typing", (room) => {
@@ -40,7 +49,7 @@ app.prepare().then(() => {
         });
 
         socket.on("disconnect", () => {
-            console.log("Client disconnected", socket.id);
+            // console.log("Client disconnected", socket.id);
         });
     });
 

@@ -3,7 +3,7 @@
   "version": "0.1.0",
   "private": true,
   "scripts": {
-    "dev": "next dev",
+    "dev": "ts-node --project tsconfig.json server.ts",
     "build": "next build",
     "start": "next start",
     "server": "npx tsx server.ts",

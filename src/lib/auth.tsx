@@ -31,8 +31,10 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     const [loading, setLoading] = useState(true);
 
     useEffect(() => {
+        // Listens for authentication state changes (login, logout, session restore)
         const unsubscribe = onAuthStateChanged(auth, (user) => {
             setUser(user);
+            setRole('USER'); // Default role; could be fetched from Firestore if needed
             setLoading(false);
         });
         return () => unsubscribe();
@@ -61,7 +63,10 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
 
     return (
         <AuthContext.Provider value={{ role, toggleRole, user, loading, loginWithGoogle, logout }}>
-            {!loading && children}
+            {/* We render children immediately. 
+                ProtectedRoute will handle the loading UI for private routes. 
+            */}
+            {children}
         </AuthContext.Provider>
     );
 }

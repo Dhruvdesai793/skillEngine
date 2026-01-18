@@ -1,5 +1,5 @@
 import type { Metadata } from "next";
-import { Inter } from "next/font/google"; // Using Inter for that clean Google look
+import { Inter } from "next/font/google";
 import "./globals.css";
 import SmoothScrolling from "@/components/SmoothScrolling";
 import Dock from "@/components/ui/Dock";
@@ -7,7 +7,7 @@ import Dock from "@/components/ui/Dock";
 const inter = Inter({ subsets: ["latin"], variable: "--font-inter" });
 
 export const metadata: Metadata = {
-  title: "Skill Intelligence Engine",
+  title: "skill Engine",
   description: "AI-powered skill analysis and matching platform.",
 };
 
