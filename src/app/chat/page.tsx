@@ -18,7 +18,7 @@ export default function ChatPage() {
                             NEURAL <span className="text-transparent bg-clip-text bg-gradient-to-r from-lando to-emerald-400">NEXUS</span>
                         </h1>
                         <p className="text-white/40 font-mono text-[10px] uppercase tracking-widest hidden md:block">
-                            Encrypted Global Communication Relay // v2.4
+                            Encrypted Global Communication Relay // UNDER DEVELOPMENT
                         </p>
                     </div>
                     <div className="flex items-center gap-2">
