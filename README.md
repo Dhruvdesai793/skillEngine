@@ -1,36 +1,67 @@
-This is a [Next.js](https://nextjs.org) project bootstrapped with [`create-next-app`](https://nextjs.org/docs/app/api-reference/cli/create-next-app).
+# 🚀 Why SkillEngine?
 
-## Getting Started
+* **Speed**: Uses parallel processing to analyze resumes 2x faster than standard AI tools.
+* **Smart Matching**: Uses "Vector Search" to match you with jobs based on the *meaning* of your experience, not just keywords.
+* **Actionable**: Don't just get advice—get a week-by-week roadmap with specific "Proof of Work" projects to build.
+* **Visual**: See your strengths at a glance with interactive radar charts and "Cyberpunk" data dashboards.
 
-First, run the development server:
+---
+
+## 🧠 Key Features
+
+1. **Profile Decoder**: Instantly extracts your tech stack and calculates your market compatibility.
+2. **Capability Matrix**: A 1-100 visual breakdown of your professional persona.
+3. **Mission Timeline**: A dynamic roadmap identifying exactly what to learn and how to prove you know it.
+4. **Market Telemetry**: Real-time salary estimates and demand forecasting for your specific profile.
+
+---
+
+## 🛠️ Tech Stack
+
+* **Frontend**: Next.js 15, Tailwind CSS, Framer Motion (Animations), Recharts (Visuals).
+* **AI & Backend**: Llama 3.1 (Groq) for logic, Google Gemini for data matching, Node.js Server Actions.
+* **Database**: MongoDB Atlas with Vector Search.
+
+---
+
+## ⚡ Quick Start
+
+### 1. Clone & Enter
 
 ```bash
-npm run dev
-# or
-yarn dev
-# or
-pnpm dev
-# or
-bun dev
+https://github.com/Dhruvdesai793/skillEngine.git
+cd skillEngine
+
 ```
 
-Open [http://localhost:3000](http://localhost:3000) with your browser to see the result.
+### 2. Configure API Keys
 
-You can start editing the page by modifying `app/page.tsx`. The page auto-updates as you edit the file.
+Create a `.env.local` file in the root:
 
-This project uses [`next/font`](https://nextjs.org/docs/app/building-your-application/optimizing/fonts) to automatically optimize and load [Geist](https://vercel.com/font), a new font family for Vercel.
+```bash
+GROQ_API_KEY=your_key
+GEMINI_API_KEY=your_key
+RESPECTIVE FIREBASE_KEYs
+```
 
-## Learn More
+### 3. Launch
 
-To learn more about Next.js, take a look at the following resources:
+```bash
+npm install
+npm run dev
 
-- [Next.js Documentation](https://nextjs.org/docs) - learn about Next.js features and API.
-- [Learn Next.js](https://nextjs.org/learn) - an interactive Next.js tutorial.
+```
 
-You can check out [the Next.js GitHub repository](https://github.com/vercel/next.js) - your feedback and contributions are welcome!
+---
 
-## Deploy on Vercel
+## 🔮 Future Roadmap
 
-The easiest way to deploy your Next.js app is to use the [Vercel Platform](https://vercel.com/new?utm_medium=default-template&filter=next.js&utm_source=create-next-app&utm_campaign=create-next-app-readme) from the creators of Next.js.
+* **GitHub/LinkedIn Sync**: Automatically update your SkillEngine profile as you code or post.
+* **One-Click Apply**: Instantly apply to high-match roles found via Vector Search.
+* **Multi-Agent Mock Interviews**: AI agents that simulate technical interviews based on your identified skill gaps.
+* **Team Mode**: Allow recruiters to visualize an entire team's capability matrix to find "missing links" in a department.
 
-Check out our [Next.js deployment documentation](https://nextjs.org/docs/app/building-your-application/deploying) for more details.
+---
+
+**Developed for the 2026 IEEE Ingenium Hackathon.**
+*Stop building resumes. Start building careers.*
