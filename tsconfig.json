@@ -26,11 +26,7 @@
       "@/*": [
         "./src/*"
       ]
-    },
-    // Addition: Ensure Node.js types are available for server.ts
-    "types": [
-      "node"
-    ]
+    }
   },
   "include": [
     "next-env.d.ts",
@@ -38,9 +34,7 @@
     "**/*.tsx",
     ".next/types/**/*.ts",
     ".next/dev/types/**/*.ts",
-    "**/*.mts",
-    // Addition: Explicitly include the root server file
-    "server.ts"
+    "**/*.mts"
   ],
   "exclude": [
     "node_modules"

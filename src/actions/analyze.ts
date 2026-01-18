@@ -1,11 +1,44 @@
 'use server';
 
 import mammoth from 'mammoth';
-import pdf from 'pdf-parse-new';
+import { getDocument } from 'pdfjs-dist/legacy/build/pdf.mjs';
 
+// Groq Config
 const GROQ_URL = 'https://api.groq.com/openai/v1/chat/completions';
 const MODEL = 'llama-3.1-8b-instant';
 
+// --- PDF EXTRACTION LOGIC (Turbopack Compatible) ---
+async function extractPdfText(buffer: Buffer): Promise<string> {
+    // Convert Buffer to Uint8Array for pdfjs
+    const data = new Uint8Array(buffer);
+
+    // Load document using the legacy build (no worker required in Node context usually, 
+    // or it handles it internally better than the standard build for Vercel)
+    const loadingTask = getDocument({
+        data,
+        useSystemFonts: true, // Helps with font rendering in Node
+        disableFontFace: true // Disables font face loading to avoid DOM errors
+    });
+
+    const pdf = await loadingTask.promise;
+    let fullText = "";
+
+    // Iterate through pages
+    for (let i = 1; i <= pdf.numPages; i++) {
+        const page = await pdf.getPage(i);
+        const textContent = await page.getTextContent();
+        // Extract string items and join them
+        const pageText = textContent.items
+            .filter((item: any) => item.str)
+            .map((item: any) => item.str)
+            .join(" ");
+        fullText += pageText + "\n";
+    }
+
+    return fullText;
+}
+
+// --- HELPER: JSON PARSING ---
 function safeJSONParse(raw: string) {
     const cleaned = raw.replace(/```json|```/gi, '').trim();
     const start = cleaned.indexOf('{');
@@ -14,6 +47,7 @@ function safeJSONParse(raw: string) {
     return JSON.parse(cleaned.slice(start, end + 1));
 }
 
+// --- HELPER: GROQ API CALLER ---
 async function callGroq(messages: any[], temperature = 0.3) {
     if (!process.env.GROQ_API_KEY) throw new Error("GROQ_API_KEY missing");
 
@@ -41,26 +75,35 @@ async function callGroq(messages: any[], temperature = 0.3) {
     return safeJSONParse(content);
 }
 
-async function extractResumeText(file: File) {
-    const buffer = Buffer.from(await file.arrayBuffer());
-    const text = file.type === 'application/pdf'
-        ? (await pdf(buffer)).text
-        : (await mammoth.extractRawText({ buffer })).value;
-    return text.replace(/\s+/g, ' ').slice(0, 15000);
-}
-
+// --- MAIN ACTION: ANALYZE RESUME ---
 export async function analyzeResume(formData: FormData, targetRole: string) {
     const file = formData.get('resume') as File;
     if (!file) return { error: 'No file uploaded' };
 
     try {
-        const resumeText = await extractResumeText(file);
+        const arrayBuffer = await file.arrayBuffer();
+        const buffer = Buffer.from(arrayBuffer);
+        let resumeText = "";
 
+        // Extraction Strategy
+        if (file.type === 'application/pdf') {
+            resumeText = await extractPdfText(buffer);
+        } else {
+            const data = await mammoth.extractRawText({ buffer });
+            resumeText = data.value;
+        }
+
+        // Truncate to avoid token limits (approx 15k chars is safe for 8b model input)
+        const truncatedText = resumeText.replace(/\s+/g, ' ').slice(0, 15000);
+
+        // AI Analysis
         const data = await callGroq([
             {
                 role: 'system',
                 content: `You are a Senior Career Architect for Tech. 
                 Analyze the resume for the role: "${targetRole}".
+                
+                CRITICAL: All numerical scores (resumeScore, atsScore, skill scores) MUST be integers between 0 and 100.
                 
                 Return STRICT JSON with this schema:
                 {
@@ -90,16 +133,18 @@ export async function analyzeResume(formData: FormData, targetRole: string) {
                     ]
                 }`
             },
-            { role: 'user', content: resumeText }
+            { role: 'user', content: truncatedText }
         ]);
 
-        return { success: true, data, resumeText };
+        return { success: true, data, resumeText: truncatedText };
+
     } catch (err: any) {
         console.error("Analysis Error:", err);
-        return { error: err.message };
+        return { error: err.message || "Failed to analyze resume" };
     }
 }
 
+// --- ACTION: DEEP MARKET ANALYSIS ---
 export async function analyzeDeepResume(baseData: any, location: string) {
     try {
         const data = await callGroq([
